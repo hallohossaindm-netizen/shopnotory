@@ -1,0 +1,6 @@
+{
+  "name": "ShopnoTory - স্বপ্নের কেনাকাটা",
+  "description": "Curated lifestyle and everyday boutique store with seamless shopping, cart, checkout, and admin dashboard in Bengali & English.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.admin == true ||
+         request.auth.token.email == 'admin@shopnotory.com');
+    }
+
+    // Default: Deny all writes and reads unless explicitly allowed
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 1. Products Collection
+    // Public can read active products. Only admins can create, update, or delete.
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 2. Settings Collection
+    // Store settings (announcement, delivery fee, ads banner)
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 3. Orders Collection
+    // Anyone can create an order with valid data.
+    // Reading orders is restricted to the administrator or the customer who created it.
+    match /orders/{orderId} {
+      allow create: if request.resource.data.customer.name is string
+                    && request.resource.data.customer.phone is string
+                    && request.resource.data.items is list
+                    && request.resource.data.grandTotal is number
+                    && request.resource.data.grandTotal >= 0;
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 4. Coupons Collection
+    // Public can read active coupons to apply in cart. Only admins can modify.
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 5. Contacts / Messages Collection
+    // Public can submit contact messages. Only admins can read and manage.
+    match /contacts/{messageId} {
+      allow create: if request.resource.data.name is string
+                    && request.resource.data.message is string;
+      allow read, delete: if isAdmin();
+    }
+  }
+}

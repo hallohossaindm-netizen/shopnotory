@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --ink: #20251f;
+    --muted: #7b7e75;
+    --green: #b8d56d;
+    --green-dark: #788e42;
+    --green-light: #eef5d8;
+    --line: #e7e5dd;
+    --cream: #fbfaf7;
+    --cream-card: #f5f3ec;
+    font-family: 'DM Sans', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  body {
+    background-color: var(--cream);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+.font-serif-brand {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.font-bengali {
+  font-family: 'Hind Siliguri', 'DM Sans', sans-serif;
+}
+
+/* Safe area padding for mobile notches and bottom bars */
+.safe-bottom {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Custom scrollbars for drawers */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1efe8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d1c4;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b5b1a2;
+}
+
+/* Hide scrollbars for clean horizontal pill scrolling on mobile */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
