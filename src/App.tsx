@@ -23,6 +23,7 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsPage } from './pages/TermsPage';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
+import { FloatingWhatsApp } from './components/common/FloatingWhatsApp';
 
 // Lucide icons
 import { WifiOff, Smartphone, Download, Share2, X, Sparkles } from 'lucide-react';
@@ -146,6 +147,7 @@ function PublicLayout() {
       <Footer />
       <BottomPromoBar />
       <MobileBottomNav />
+      <FloatingWhatsApp />
     </div>
   );
 }
@@ -188,6 +190,8 @@ export default function App() {
           {/* Admin Routes with Clean Dedicated Layout */}
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/admin/account" element={<AdminDashboardPage />} />
+          <Route path="/admin/settings" element={<AdminDashboardPage />} />
         </Routes>
         <ToastAlert />
       </BrowserRouter>

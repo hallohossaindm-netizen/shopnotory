@@ -7,10 +7,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Verify trusted administrator privileges via custom claims or secure server-provisioned role document
+    // Never trust client-supplied roles or hardcoded email strings
     function isAdmin() {
       return isAuthenticated() &&
         (request.auth.token.admin == true ||
-         request.auth.token.email == 'admin@shopnotory.com');
+         request.auth.token.role == 'admin' ||
+         exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
 
     // Default: Deny all writes and reads unless explicitly allowed
@@ -18,8 +21,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // 0. Admins Collection
+    // Only authenticated admins can read admin profiles; non-admins cannot read or write
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false; // Server-provisioned only via Admin SDK
+    }
+
     // 1. Products Collection
-    // Public can read active products. Only admins can create, update, or delete.
+    // Public can read active products. Only verified admins can create, update, or delete.
     match /products/{productId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
@@ -34,7 +44,7 @@ service cloud.firestore {
 
     // 3. Orders Collection
     // Anyone can create an order with valid data.
-    // Reading orders is restricted to the administrator or the customer who created it.
+    // Reading and updating orders is restricted to verified administrators.
     match /orders/{orderId} {
       allow create: if request.resource.data.customer.name is string
                     && request.resource.data.customer.phone is string

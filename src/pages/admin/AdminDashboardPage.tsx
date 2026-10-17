@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -20,14 +20,24 @@ import {
   Tag,
   Eye,
   Store,
-  Layers
+  Layers,
+  ShieldCheck,
+  KeyRound,
+  Lock,
+  UserCheck,
+  RefreshCw,
+  AlertCircle,
+  Mail
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
+import { changeAdminPassword, sendAdminPasswordReset } from '../../services/adminAuth';
 import type { Product, ShopSettings, Order } from '../../types';
 
 export const AdminDashboardPage: React.FC = () => {
   const {
     isAdmin,
+    adminUser,
+    adminClaims,
     adminLogout,
     products,
     orders,
@@ -50,10 +60,112 @@ export const AdminDashboardPage: React.FC = () => {
     }
   }, [isAdmin, navigate]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'coupons' | 'ads' | 'settings'>('overview');
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const initialTab =
+    location.pathname === '/admin/account'
+      ? 'account'
+      : location.pathname === '/admin/settings'
+      ? 'settings'
+      : (searchParams.get('tab') as any) || 'overview';
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'coupons' | 'ads' | 'settings' | 'account'>(
+    ['overview', 'products', 'orders', 'coupons', 'ads', 'settings', 'account'].includes(initialTab)
+      ? initialTab
+      : 'overview'
+  );
+
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
   const [settingsForm, setSettingsForm] = useState<ShopSettings>(settings);
+
+  // Password change states
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
+
+  // Password reset email state
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState('');
+  const [resetError, setResetError] = useState('');
+
+  useEffect(() => {
+    if (location.pathname === '/admin/account') {
+      setActiveTab('account');
+      return;
+    }
+    if (location.pathname === '/admin/settings') {
+      setActiveTab('settings');
+      return;
+    }
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['overview', 'products', 'orders', 'coupons', 'ads', 'settings', 'account'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [location.pathname, searchParams]);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError('');
+    setPwSuccess('');
+
+    if (!adminUser) {
+      setPwError('কোনো সক্রিয় Firebase অ্যাডমিন সেশন পাওয়া যায়নি।');
+      return;
+    }
+
+    if (!currentPassword) {
+      setPwError('বর্তমান পাসওয়ার্ড প্রদান আবশ্যক।');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPwError('নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPwError('নতুন পাসওয়ার্ড এবং নিশ্চিতকরণ পাসওয়ার্ড মিলছে না।');
+      return;
+    }
+
+    setPwLoading(true);
+    const result = await changeAdminPassword(adminUser, currentPassword, newPassword);
+    setPwLoading(false);
+
+    if (result.success) {
+      setPwSuccess(result.message);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      showToast('পাসওয়ার্ড সফলভাবে পরিবর্তিত হয়েছে');
+    } else {
+      setPwError(result.message);
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    if (!adminUser?.email) {
+      setResetError('অ্যাডমিন ইমেইল ঠিকানা পাওয়া যায়নি।');
+      return;
+    }
+
+    setResetLoading(true);
+    setResetSuccess('');
+    setResetError('');
+    const result = await sendAdminPasswordReset(adminUser.email);
+    setResetLoading(false);
+
+    if (result.success) {
+      setResetSuccess(result.message);
+      showToast('পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে');
+    } else {
+      setResetError(result.message);
+    }
+  };
 
   // New product initial state
   const [newProductForm, setNewProductForm] = useState<Omit<Product, 'id'>>({
@@ -227,6 +339,17 @@ export const AdminDashboardPage: React.FC = () => {
             }`}
           >
             <Settings className="w-4 h-4" /> স্টোর সেটিংস
+          </button>
+
+          <button
+            onClick={() => setActiveTab('account')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 whitespace-nowrap transition shadow-2xs ${
+              activeTab === 'account'
+                ? 'bg-[#1b4332] text-white'
+                : 'bg-white text-stone-700 hover:bg-[#ede9de] border border-[#ded9ce]'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-[#b8d56d]" /> অ্যাকাউন্ট ও সিকিউরিটি
           </button>
         </div>
 
@@ -811,6 +934,253 @@ export const AdminDashboardPage: React.FC = () => {
                 <Save className="w-4 h-4 text-[#b8d56d]" /> স্টোর সেটিংস সংরক্ষণ
               </button>
             </form>
+          </div>
+        )}
+
+        {/* TAB 7: ADMIN ACCOUNT & SECURITY SETTINGS */}
+        {activeTab === 'account' && (
+          <div className="space-y-6">
+            
+            {/* Admin Profile & Security Identity */}
+            <div className="bg-white rounded-3xl border border-[#ded9ce] p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#143d2b] text-[#b8d56d] flex items-center justify-center font-bold text-xl shadow-xs">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-[#143d2b] flex items-center gap-2">
+                      অ্যাডমিন অ্যাকাউন্ট তথ্য
+                      <span className="bg-[#e3ecda] text-[#1b4332] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#c6dfb7]">
+                        Firebase Verified
+                      </span>
+                    </h3>
+                    <p className="text-xs text-stone-500">
+                      সুপার অ্যাডমিনের পরিচয়, সেশন ও কাস্টম ক্লেইমস বিবরণী
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    সক্রিয় সুপার অ্যাডমিন
+                  </span>
+                </div>
+              </div>
+
+              {/* Account Meta Grid */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+                <div className="bg-[#fbfaf7] p-3.5 rounded-2xl border border-stone-200/80 space-y-1">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">অ্যাডমিন ইমেইল</span>
+                  <p className="text-xs font-bold text-stone-800 break-all">{adminUser?.email || 'admin@shopnotory.com'}</p>
+                  <p className="text-[10px] text-stone-500">Primary Administrator</p>
+                </div>
+
+                <div className="bg-[#fbfaf7] p-3.5 rounded-2xl border border-stone-200/80 space-y-1">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">Firebase UID</span>
+                  <p className="text-xs font-mono text-stone-700 truncate" title={adminUser?.uid}>
+                    {adminUser?.uid || 'auth-admin-session'}
+                  </p>
+                  <p className="text-[10px] text-stone-500">Unique Subject ID</p>
+                </div>
+
+                <div className="bg-[#fbfaf7] p-3.5 rounded-2xl border border-stone-200/80 space-y-1">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">ইমেইল স্ট্যাটাস</span>
+                  <p className="text-xs font-bold text-emerald-700 flex items-center gap-1">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    {adminUser?.emailVerified ? 'ভেরিফাইড (Verified)' : 'সক্রিয় সেশন'}
+                  </p>
+                  <p className="text-[10px] text-stone-500">Email Verification</p>
+                </div>
+
+                <div className="bg-[#fbfaf7] p-3.5 rounded-2xl border border-stone-200/80 space-y-1">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">Custom Claims</span>
+                  <p className="text-xs font-bold text-[#143d2b] flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    {adminClaims.admin === true ? 'admin: true (Active)' : 'Verified Role'}
+                  </p>
+                  <p className="text-[10px] text-stone-500">Server Authorization</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Password Management Grid */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              
+              {/* Change Password Form (Requirement 3 & 4) */}
+              <div className="bg-white rounded-3xl border border-[#ded9ce] p-6 shadow-xs space-y-4">
+                <div className="flex items-center gap-2.5 pb-2 border-b border-stone-100">
+                  <div className="w-8 h-8 rounded-xl bg-[#e3ecda] text-[#1b4332] flex items-center justify-center">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[#143d2b]">পাসওয়ার্ড পরিবর্তন করুন</h4>
+                    <p className="text-[11px] text-stone-500">সাম্প্রতিক রি-অথেন্টিকেশন ও সিকিউর আপডেট</p>
+                  </div>
+                </div>
+
+                {pwError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{pwError}</span>
+                  </div>
+                )}
+
+                {pwSuccess && (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{pwSuccess}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleChangePassword} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="block font-bold text-stone-600 mb-1">
+                      বর্তমান পাসওয়ার্ড <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        required
+                        value={currentPassword}
+                        onChange={e => setCurrentPassword(e.target.value)}
+                        placeholder="বর্তমান পাসওয়ার্ড লিখুন"
+                        className="w-full bg-[#fbfaf7] border border-stone-300 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-[#1b4332]"
+                      />
+                      <KeyRound className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+                    </div>
+                    <p className="text-[10px] text-stone-400 mt-0.5">
+                      Firebase নিরাপত্তা বিধিমালার জন্য সাম্প্রতিক প্রমাণীকরণ আবশ্যক।
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-stone-600 mb-1">
+                      নতুন পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর) <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        required
+                        minLength={8}
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        placeholder="নতুন শক্তিশালী পাসওয়ার্ড লিখুন"
+                        className="w-full bg-[#fbfaf7] border border-stone-300 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-[#1b4332]"
+                      />
+                      <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-stone-600 mb-1">
+                      নতুন পাসওয়ার্ড নিশ্চিতকরণ <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        required
+                        minLength={8}
+                        value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        placeholder="নতুন পাসওয়ার্ড পুনরায় লিখুন"
+                        className="w-full bg-[#fbfaf7] border border-stone-300 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-[#1b4332]"
+                      />
+                      <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={pwLoading}
+                    className="w-full py-2.5 rounded-xl bg-[#1b4332] text-white text-xs font-bold hover:bg-[#2d6a4f] transition shadow-xs flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60"
+                  >
+                    {pwLoading ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>যাচাই ও আপডেট হচ্ছে...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-[#b8d56d]" />
+                        <span>পাসওয়ার্ড আপডেট করুন</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              {/* Forgot / Reset Password Email Section (Requirement 3 & 4) */}
+              <div className="bg-white rounded-3xl border border-[#ded9ce] p-6 shadow-xs space-y-4 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2.5 pb-2 border-b border-stone-100">
+                    <div className="w-8 h-8 rounded-xl bg-[#e3ecda] text-[#1b4332] flex items-center justify-center">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#143d2b]">অফিসিয়াল পাসওয়ার্ড রিসেট ইমেইল</h4>
+                      <p className="text-[11px] text-stone-500">Firebase এর মাধ্যমে সুরক্ষিত রিসেট লিংক প্রেরণ</p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    আপনি কি বর্তমান পাসওয়ার্ড ভুলে গেছেন বা জরুরি প্রয়োজনে ইমেইল দিয়ে রিসেট করতে চান? নিচের বাটনে ক্লিক করলে আপনার নিবন্ধিত অ্যাডমিন ইমেইল ঠিকানায় ({adminUser?.email || 'অ্যাডমিন ইমেইল'}) একটি সুরক্ষিত ওয়ান-টাইম পাসওয়ার্ড রিসেট লিংক পাঠানো হবে।
+                  </p>
+
+                  {resetError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{resetError}</span>
+                    </div>
+                  )}
+
+                  {resetSuccess && (
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>{resetSuccess}</span>
+                    </div>
+                  )}
+
+                  <div className="p-3 rounded-2xl bg-[#fbfaf7] border border-stone-200 text-[11px] text-stone-600 space-y-1">
+                    <span className="font-bold text-[#143d2b] block">পাসওয়ার্ড রিসেটের নিয়মাবলী:</span>
+                    <p>• রিসেট লিংকটির মেয়াদ সাধারণত ১ ঘন্টা থাকে।</p>
+                    <p>• ইমেইলে পাওয়া লিংকে ক্লিক করে নতুন পাসওয়ার্ড সেট করুন।</p>
+                    <p>• ইনবক্সে ইমেইল না পেলে স্প্যাম বা ট্র্যাশ ফোল্ডার চেক করুন।</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSendResetEmail}
+                  disabled={resetLoading}
+                  className="w-full py-2.5 rounded-xl border border-[#1b4332] text-[#1b4332] hover:bg-[#e3ecda] text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60"
+                >
+                  {resetLoading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>ইমেইল পাঠানো হচ্ছে...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 text-[#1b4332]" />
+                      <span>আমার ইমেইলে রিসেট লিংক পাঠান</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Security Compliance & Authorization Info */}
+            <div className="bg-[#e3ecda]/60 border border-[#c4deb0] rounded-3xl p-5 text-xs text-[#143d2b] space-y-2">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <ShieldCheck className="w-4 h-4 text-[#1b4332]" />
+                <span>ShopnoTory নিরাপত্তা ও প্রবেশাধিকার নীতিমালা (RBAC Architecture)</span>
+              </div>
+              <p className="text-[11px] text-[#2c4738] leading-relaxed">
+                ব্রাউজারের কোনো লোকাল স্টোরেজ বা ক্লায়েন্ট-সাইড ফিল্ডের উপর এডমিন অধিকার নির্ভরশীল নয়। সমস্ত পণ্য তৈরি, এডিট, ডিলিট, কুপন ও অর্ডার ম্যানেজমেন্ট কেবলমাত্র Firebase Authentication সার্ভারের ভেরিফাইড কাস্টম ক্লেইমস (Custom User Claims) এবং ফায়ারস্টোর সিকিউরিটি রুলস (<code>firestore.rules</code>) দ্বারা সুরক্ষিত।
+              </p>
+            </div>
           </div>
         )}
       </div>

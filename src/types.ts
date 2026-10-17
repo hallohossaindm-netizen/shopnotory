@@ -90,6 +90,7 @@ export interface ShopSettings {
   deliveryFeeOutsideDhaka: number;
   freeDeliveryThreshold: number;
   supportPhone: string;
+  whatsappPhone?: string;
   supportEmail: string;
   supportHours: string;
   businessAddress: string;

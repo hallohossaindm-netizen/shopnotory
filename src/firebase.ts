@@ -2,16 +2,38 @@ import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
-const config = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+const env: Record<string, string | undefined> =
+  typeof import.meta !== 'undefined' && import.meta && import.meta.env
+    ? (import.meta.env as any)
+    : (typeof process !== 'undefined' && process.env ? process.env : {});
+
+const defaultFirebaseConfig = {
+  apiKey: "AIzaSyDbvT4rjl12eUSmKTao0KcN6NJH9YIUy6Y",
+  authDomain: "shopnotory13.firebaseapp.com",
+  projectId: "shopnotory13",
+  storageBucket: "shopnotory13.firebasestorage.app",
+  messagingSenderId: "27958213094",
+  appId: "1:27958213094:web:f7458c0e5b9a3f3cad3e27",
+  measurementId: "G-WGXRPDEXPV"
 };
 
-const configured = Boolean(config.apiKey && config.projectId && config.appId);
+const config = {
+  apiKey: env.VITE_FIREBASE_API_KEY || defaultFirebaseConfig.apiKey,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || defaultFirebaseConfig.authDomain,
+  projectId: env.VITE_FIREBASE_PROJECT_ID || defaultFirebaseConfig.projectId,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || defaultFirebaseConfig.storageBucket,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || defaultFirebaseConfig.messagingSenderId,
+  appId: env.VITE_FIREBASE_APP_ID || defaultFirebaseConfig.appId,
+};
+
+const configured = Boolean(
+  config.apiKey &&
+  config.apiKey !== 'replace_me' &&
+  config.projectId &&
+  config.projectId !== 'your-project-id' &&
+  config.appId &&
+  config.appId !== 'replace_me'
+);
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
@@ -23,7 +45,7 @@ if (configured) {
     auth = getAuth(app);
     db = getFirestore(app);
   } catch (err) {
-    console.warn('Firebase initialization error, fallback to local mode:', err);
+    console.warn('Firebase initialization error, fallback to unconfigured mode:', err);
   }
 }
 

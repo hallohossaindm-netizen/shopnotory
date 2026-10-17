@@ -3,7 +3,8 @@ import type { Product, CartLine, Order, ShopSettings, Coupon, CustomerUser, Cust
 import { initialProducts, initialSettings, initialCoupons } from '../data/mockData';
 import { db, auth, firebaseReady } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { loginAdminWithFirebase, verifyAdminPrivileges } from '../services/adminAuth';
 
 interface ShopContextType {
   products: Product[];
@@ -15,6 +16,9 @@ interface ShopContextType {
   appliedCoupon: Coupon | null;
   activeUser: CustomerUser | null;
   isAdmin: boolean;
+  adminUser: User | null;
+  adminClaims: Record<string, any>;
+  firebaseConfigured: boolean;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   selectedCategory: string;
@@ -174,7 +178,17 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [settings, setSettings] = useState<ShopSettings>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_SETTINGS);
-      return saved ? JSON.parse(saved) : initialSettings;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!parsed.supportPhone || parsed.supportPhone.includes('123456') || parsed.supportPhone === '+880 1700 123456') {
+          parsed.supportPhone = '01845805713';
+        }
+        if (!parsed.whatsappPhone) {
+          parsed.whatsappPhone = '01845805713';
+        }
+        return parsed;
+      }
+      return initialSettings;
     } catch {
       return initialSettings;
     }
@@ -184,13 +198,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 
   // Active customer & admin
-  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(STORAGE_ADMIN) === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [adminUser, setAdminUser] = useState<User | null>(null);
+  const [adminClaims, setAdminClaims] = useState<Record<string, any>>({});
 
   const [activeUser, setActiveUser] = useState<CustomerUser | null>(() => {
     try {
@@ -249,18 +259,25 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {}
   }, [settings]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_ADMIN, isAdmin ? 'true' : 'false');
-    } catch {}
-  }, [isAdmin]);
-
-  // Firebase auth & firestore listeners (if live Firebase is configured)
+  // Firebase Auth admin verification listener
   useEffect(() => {
     if (!auth) return;
-    return onAuthStateChanged(auth, u => {
+    return onAuthStateChanged(auth, async (u) => {
       if (u) {
-        setIsAdmin(true);
+        const verification = await verifyAdminPrivileges(u);
+        if (verification.isAuthorized) {
+          setIsAdmin(true);
+          setAdminUser(u);
+          setAdminClaims(verification.claims);
+        } else {
+          setIsAdmin(false);
+          setAdminUser(null);
+          setAdminClaims({});
+        }
+      } else {
+        setIsAdmin(false);
+        setAdminUser(null);
+        setAdminClaims({});
       }
     });
   }, []);
@@ -554,38 +571,43 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const adminLogin = async (email: string, pass: string) => {
-    if (auth && firebaseReady) {
-      try {
-        await signInWithEmailAndPassword(auth, email, pass);
-        setIsAdmin(true);
-        showToast('এডমিন লগইন সফল!');
-        return { success: true, message: 'এডমিন লগইন সফল' };
-      } catch {
-        // Fallback demo credentials
-        if (email === 'admin@shopnotory.com' && pass === 'admin123') {
-          setIsAdmin(true);
-          showToast('ডেমো এডমিন সেশন সক্রিয়!');
-          return { success: true, message: 'ডেমো এডমিন লগইন সফল' };
-        }
-        return { success: false, message: 'ইমেইল বা পাসওয়ার্ড সঠিক নয়' };
-      }
+    if (!firebaseReady || !auth) {
+      return {
+        success: false,
+        message: 'Firebase Authentication কনফিগার করা হয়নি। অ্যাডমিন সিস্টেমে প্রবেশের জন্য প্রথমে Firebase সেটআপ সম্পন্ন করুন।'
+      };
+    }
+
+    const res = await loginAdminWithFirebase(email, pass);
+    if (res.success && res.user) {
+      setIsAdmin(true);
+      setAdminUser(res.user);
+      setAdminClaims(res.claims || {});
+      showToast('এডমিন লগইন সফল!');
+      return { success: true, message: 'এডমিন লগইন সফল' };
     } else {
-      // Offline/Local Mode credentials
-      if (email === 'admin@shopnotory.com' && pass === 'admin123') {
-        setIsAdmin(true);
-        showToast('এডমিন লগইন সফল!');
-        return { success: true, message: 'এডমিন লগইন সফল' };
-      }
-      return { success: false, message: 'ভুল তথ্য! admin@shopnotory.com এবং admin123 ব্যবহার করুন' };
+      setIsAdmin(false);
+      setAdminUser(null);
+      setAdminClaims({});
+      return { success: false, message: res.message };
     }
   };
 
-  const adminLogout = () => {
+  const adminLogout = async () => {
     if (auth) {
-      signOut(auth).catch(() => {});
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
     }
     setIsAdmin(false);
-    showToast('এডমিন সেশন সমাপ্ত হয়েছে');
+    setAdminUser(null);
+    setAdminClaims({});
+    try {
+      localStorage.removeItem(STORAGE_ADMIN);
+    } catch {}
+    showToast('এডমিন সেশন সফলভাবে সমাপ্ত হয়েছে');
   };
 
   const customerLogin = (email: string, name: string) => {
@@ -619,6 +641,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         appliedCoupon,
         activeUser,
         isAdmin,
+        adminUser,
+        adminClaims,
+        firebaseConfigured: firebaseReady,
         searchQuery,
         setSearchQuery,
         selectedCategory,

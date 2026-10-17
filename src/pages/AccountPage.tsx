@@ -141,7 +141,6 @@ export const AccountPage: React.FC = () => {
             <input
               type="password"
               required
-              defaultValue="123456"
               placeholder="••••••••"
               className="w-full bg-[#fbfaf7] border border-[#d8d3c5] rounded-xl px-3.5 py-2.5 text-xs text-[#1c211a] focus:outline-none focus:border-[#1b4332]"
             />

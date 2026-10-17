@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Phone, Mail, Clock, MapPin, ShieldCheck, Heart } from 'lucide-react';
+import { Phone, Mail, Clock, MapPin, ShieldCheck, Heart, MessageCircle } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 
 export const Footer: React.FC = () => {
@@ -90,11 +90,22 @@ export const Footer: React.FC = () => {
               <li className="flex items-start gap-2.5">
                 <Phone className="w-4 h-4 text-[#b8d56d] shrink-0 mt-0.5" />
                 <div>
-                  <a href={`tel:${settings.supportPhone}`} className="text-white font-bold hover:text-[#b8d56d]">
-                    {settings.supportPhone}
+                  <a href={`tel:${settings.supportPhone || '01845805713'}`} className="text-white font-bold hover:text-[#b8d56d]">
+                    {settings.supportPhone || '01845805713'}
                   </a>
                   <p className="text-[10px] text-[#8ea496]">{settings.supportHours}</p>
                 </div>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <MessageCircle className="w-4 h-4 text-[#25D366] shrink-0" />
+                <a
+                  href={`https://wa.me/8801845805713?text=${encodeURIComponent('আসসালামু আলাইকুম, ShopnoTory থেকে সাহায্য চাই।')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#25D366] font-semibold text-white"
+                >
+                  WhatsApp: 01845805713
+                </a>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-[#b8d56d] shrink-0" />

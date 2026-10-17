@@ -320,7 +320,7 @@ export const CheckoutPage: React.FC = () => {
                   <p className="text-xs font-bold text-[#143d2b]">বিকাশ (bKash) পেমেন্ট</p>
                   <span className="text-[9px] bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full font-bold">অনলাইন</span>
                 </div>
-                <p className="text-[11px] text-stone-500">বিকাশ মার্চেন্ট কিংবা সেন্ড মানি করুন: 01700123456</p>
+                <p className="text-[11px] text-stone-500">বিকাশ মার্চেন্ট কিংবা সেন্ড মানি করুন: <strong className="text-[#143d2b] font-bold">{settings.supportPhone || '01845805713'}</strong></p>
               </div>
             </label>
 
@@ -339,7 +339,7 @@ export const CheckoutPage: React.FC = () => {
                   <p className="text-xs font-bold text-[#143d2b]">নগদ (Nagad) পেমেন্ট</p>
                   <span className="text-[9px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">অনলাইন</span>
                 </div>
-                <p className="text-[11px] text-stone-500">নগদ একাউন্ট থেকে পরিশোধ করুন: 01700123456</p>
+                <p className="text-[11px] text-stone-500">নগদ একাউন্ট থেকে পরিশোধ করুন: <strong className="text-[#143d2b] font-bold">{settings.supportPhone || '01845805713'}</strong></p>
               </div>
             </label>
 

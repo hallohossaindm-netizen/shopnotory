@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>অ্যাডমিন ড্যাশবোর্ড | ShopnoTory (স্বপ্নতরী)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            forest: {
+              800: '#1b4332',
+              900: '#143d2b',
+              950: '#0f291e',
+            },
+            cream: {
+              50: '#fbf9f4',
+              100: '#f4efe6',
+              200: '#e5e1d4',
+            }
+          },
+          fontFamily: {
+            bengali: ['"Hind Siliguri"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Hind Siliguri', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-[#fbf9f4] text-stone-900 min-h-screen flex flex-col selection:bg-[#143d2b] selection:text-white">
+
+  <!-- নেভিগেশন বার -->
+  <nav class="bg-[#143d2b] text-white sticky top-0 z-40 shadow-md border-b border-[#2d6a4f]/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- লোগো ও ব্র্যান্ড -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-[#1b4332] border border-[#b8d56d]/30 flex items-center justify-center text-[#b8d56d] font-bold text-lg shadow-inner">
+            শ
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-lg tracking-tight">ShopnoTory</span>
+              <span class="bg-[#eef4ea] text-[#1b4332] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Admin</span>
+            </div>
+            <p class="text-[11px] text-stone-300">প্রোডাক্ট ও ইনভেন্টরি ম্যানেজমেন্ট</p>
+          </div>
+        </div>
+
+        <!-- অ্যাডমিন প্রোফাইল ও লগআউট বাটন -->
+        <div class="flex items-center gap-3 sm:gap-6">
+          <div class="hidden md:flex items-center gap-2 text-xs text-stone-200">
+            <span>হটলাইন:</span>
+            <a href="tel:01845805713" class="text-[#b8d56d] font-bold hover:underline">01845805713</a>
+          </div>
+
+          <div class="hidden sm:flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 text-xs">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="admin-user-email" class="text-stone-100 font-medium truncate max-w-[150px]">লোড হচ্ছে...</span>
+          </div>
+
+          <button 
+            type="button" 
+            id="logout-btn"
+            class="px-3.5 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            লগআউট
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </nav>
+
+  <!-- প্রধান বডি কন্টেন্ট -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- ড্যাশবোর্ড টাইটেল ও হেডার বার -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">প্রোডাক্ট ড্যাশবোর্ড</h1>
+        <p class="text-xs sm:text-sm text-stone-500 mt-1">
+          Firebase Firestore ডাটাবেসের মাধ্যমে সরাসরি আপনার পণ্যের ইনভেন্টরি নিয়ন্ত্রণ করুন
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button 
+          type="button" 
+          id="refresh-btn"
+          class="px-3.5 py-2.5 rounded-2xl bg-white border border-[#e5e1d4] hover:bg-stone-50 text-stone-700 text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 shadow-sm"
+          title="রিফ্রেশ করুন"
+        >
+          🔄 রিফ্রেশ
+        </button>
+        <button 
+          type="button" 
+          id="add-product-btn"
+          class="px-4 py-2.5 rounded-2xl bg-[#143d2b] hover:bg-[#1b4332] text-white text-xs sm:text-sm font-bold transition flex items-center gap-2 shadow-lg shadow-[#143d2b]/20"
+        >
+          <span class="text-base leading-none">+</span> নতুন প্রোডাক্ট যোগ করুন
+        </button>
+      </div>
+    </div>
+
+    <!-- স্ট্যাটিস্টিকস কার্ডস -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <!-- মোট প্রোডাক্ট -->
+      <div class="bg-white p-5 rounded-3xl border border-[#e5e1d4] shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-[#eef4ea] text-[#143d2b] flex items-center justify-center font-bold text-xl">
+          📦
+        </div>
+        <div>
+          <div class="text-xs text-stone-500 font-semibold">মোট পণ্য</div>
+          <div id="stat-total" class="text-2xl font-bold text-stone-900 mt-0.5">০</div>
+        </div>
+      </div>
+
+      <!-- সক্রিয় প্রোডাক্ট -->
+      <div class="bg-white p-5 rounded-3xl border border-[#e5e1d4] shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xl">
+          ✅
+        </div>
+        <div>
+          <div class="text-xs text-stone-500 font-semibold">সক্রিয় (Active)</div>
+          <div id="stat-active" class="text-2xl font-bold text-emerald-700 mt-0.5">০</div>
+        </div>
+      </div>
+
+      <!-- স্টক শেষ / সীমিত -->
+      <div class="bg-white p-5 rounded-3xl border border-[#e5e1d4] shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xl">
+          ⚠️
+        </div>
+        <div>
+          <div class="text-xs text-stone-500 font-semibold">সীমিত স্টক (≤৫)</div>
+          <div id="stat-low-stock" class="text-2xl font-bold text-amber-700 mt-0.5">০</div>
+        </div>
+      </div>
+
+      <!-- ক্যাটাগরি সংখ্যা -->
+      <div class="bg-white p-5 rounded-3xl border border-[#e5e1d4] shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xl">
+          🏷️
+        </div>
+        <div>
+          <div class="text-xs text-stone-500 font-semibold">ক্যাটাগরি সমূহ</div>
+          <div id="stat-categories" class="text-2xl font-bold text-purple-700 mt-0.5">০</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ফিল্টার ও সার্চ বার -->
+    <div class="bg-white p-4 rounded-3xl border border-[#e5e1d4] shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="w-full md:w-80 relative">
+        <input 
+          type="text" 
+          id="search-input"
+          placeholder="পণ্যের নাম দিয়ে খুঁজুন..." 
+          class="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b] bg-stone-50"
+        />
+        <span class="absolute left-3.5 top-3 text-stone-400">🔍</span>
+      </div>
+
+      <div class="w-full md:w-auto flex items-center gap-3">
+        <label for="category-filter" class="text-xs font-bold text-stone-600 whitespace-nowrap">ক্যাটাগরি:</label>
+        <select 
+          id="category-filter"
+          class="w-full md:w-auto px-4 py-2.5 rounded-2xl border border-stone-200 text-sm bg-stone-50 focus:outline-none focus:ring-2 focus:ring-[#143d2b]"
+        >
+          <option value="all">সব ক্যাটাগরি</option>
+          <option value="নারী পোশাক">নারী পোশাক</option>
+          <option value="পুরুষ পোশাক">পুরুষ পোশাক</option>
+          <option value="জুতো">জুতো</option>
+          <option value="ব্যাগ">ব্যাগ</option>
+          <option value="অ্যাক্সেসরিজ">অ্যাক্সেসরিজ</option>
+          <option value="ঘর সাজানো">ঘর সাজানো</option>
+          <option value="লাইফস্টাইল">লাইফস্টাইল</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- প্রোডাক্ট তালিকা টেবিল কন্টেইনার -->
+    <div class="bg-white rounded-3xl border border-[#e5e1d4] shadow-sm overflow-hidden">
+      
+      <!-- লোডিং স্ট্যাটাস -->
+      <div id="table-loading" class="py-16 text-center text-stone-500">
+        <svg class="animate-spin h-8 w-8 text-[#143d2b] mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <p class="text-sm font-semibold">Firestore থেকে প্রোডাক্ট লোড হচ্ছে...</p>
+      </div>
+
+      <!-- এম্পটি স্টেট -->
+      <div id="table-empty" class="hidden py-16 text-center text-stone-500">
+        <div class="w-16 h-16 rounded-3xl bg-stone-100 flex items-center justify-center text-3xl mx-auto mb-3">
+          📭
+        </div>
+        <h3 class="text-base font-bold text-stone-800">কোনো প্রোডাক্ট পাওয়া যায়নি!</h3>
+        <p class="text-xs text-stone-400 mt-1">নতুন প্রোডাক্ট যোগ করতে উপরের "+ নতুন প্রোডাক্ট যোগ করুন" বাটনে ক্লিক করুন।</p>
+      </div>
+
+      <!-- টেবিল -->
+      <div class="overflow-x-auto">
+        <table id="products-table" class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-[#fbf9f4] border-b border-[#e5e1d4] text-[11px] font-bold text-stone-600 uppercase tracking-wider">
+              <th class="px-4 py-3.5">পণ্য ও ছবি</th>
+              <th class="px-4 py-3.5">ক্যাটাগরি</th>
+              <th class="px-4 py-3.5">মূল্য</th>
+              <th class="px-4 py-3.5">ইনভেন্টরি স্টক</th>
+              <th class="px-4 py-3.5">স্ট্যাটাস</th>
+              <th class="px-4 py-3.5 text-right">অ্যাকশন</th>
+            </tr>
+          </thead>
+          <tbody id="products-table-body" class="divide-y divide-stone-100 text-sm">
+            <!-- প্রোডাক্টগুলো ডায়নামিক্যালি জাভাস্ক্রিপ্ট দিয়ে রেন্ডার হবে -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- প্রোডাক্ট যোগ ও এডিট মোডাল (Add / Edit Modal) -->
+  <div id="product-modal" class="hidden fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto border border-[#e5e1d4] shadow-2xl p-6 sm:p-8 relative">
+      
+      <!-- মোডাল হেডার -->
+      <div class="flex items-center justify-between pb-4 border-b border-stone-200 mb-6">
+        <h2 id="modal-title" class="text-xl font-bold text-stone-900">নতুন প্রোডাক্ট যোগ করুন</h2>
+        <button type="button" id="close-modal-btn" class="w-8 h-8 rounded-full bg-stone-100 text-stone-500 hover:text-stone-900 flex items-center justify-center font-bold">
+          ✕
+        </button>
+      </div>
+
+      <!-- প্রোডাক্ট ফর্ম -->
+      <form id="product-form" class="space-y-4">
+        <input type="hidden" id="product-id" />
+
+        <!-- পণ্যের নাম -->
+        <div>
+          <label for="product-name" class="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+            পণ্যের নাম <span class="text-rose-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="product-name" 
+            required 
+            placeholder="যেমন: প্রিমিয়াম জামদানি শাড়ি"
+            class="w-full px-4 py-2.5 rounded-2xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b]"
+          />
+        </div>
+
+        <!-- ক্যাটাগরি ও ব্যাজ -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="product-category" class="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+              ক্যাটাগরি <span class="text-rose-500">*</span>
+            </label>
+            <select 
+              id="product-category" 
+              required
+              class="w-full px-4 py-2.5 rounded-2xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b] bg-white"
+            >
+              <option value="নারী পোশাক">নারী পোশাক</option>
+              <option value="পুরুষ পোশাক">পুরুষ পোশাক</option>
+              <option value="জুতো">জুতো</option>
+              <option value="ব্যাগ">ব্যাগ</option>
+              <option value="অ্যাক্সেসরিজ">অ্যাক্সেসরিজ</option>
+              <option value="ঘর সাজানো">ঘর সাজানো</option>
+              <option value="লাইফস্টাইল">লাইফস্টাইল</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="product-badge" class="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+              স্পেশাল ব্যাজ (ঐচ্ছিক)
+            </label>
+            <input 
+              type="text" 
+              id="product-badge" 
+              placeholder="যেমন: অফার, বেস্টসেলার"
+              class="w-full px-4 py-2.5 rounded-2xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b]"
+            />
+          </div>
+        </div>
+
+        <!-- মূল্য ও পূর্বের মূল্য -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label for="product-price" class="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+              বিক্রয় মূল্য (৳) <span class="text-rose-500">*</span>
+            </label>
+            <input 
+              type="number" 
+              id="product-price" 
+              required 
+              min="1"
+              placeholder="1200"
+              class="w-full px-4 py-2.5 rounded-2xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b]"
+            />
+          </div>
+
+          <div>
+            <label for="product-old-price" class="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+              পূর্বের মূল্য (৳)
+            </label>
+            <input 
+              type="number" 
+              id="product-old-price" 
+              min="0"
+              placeholder="1500"
+              class="w-full px-4 py-2.5 rounded-2xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b]"
+            />
+          </div>
+
+          <div>
+            <label for="product-stock" class="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+              স্টক পরিমাণ <span class="text-rose-500">*</span>
+            </label>
+            <input 
+              type="number" 
+              id="product-stock" 
+              required 
+              min="0"
+              placeholder="15"
+              class="w-full px-4 py-2.5 rounded-2xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b]"
+            />
+          </div>
+        </div>
+
+        <!-- ছবির URL -->
+        <div>
+          <label for="product-image" class="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+            ছবির URL (Image URL)
+          </label>
+          <input 
+            type="url" 
+            id="product-image" 
+            placeholder="https://images.unsplash.com/..."
+            class="w-full px-4 py-2.5 rounded-2xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b]"
+          />
+          <p class="text-[11px] text-stone-400 mt-1">সরাসরি ওয়েব ইমেজ লিংক প্রদান করুন।</p>
+        </div>
+
+        <!-- বিবরণ -->
+        <div>
+          <label for="product-description" class="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+            পণ্যের বিবরণ (Description)
+          </label>
+          <textarea 
+            id="product-description" 
+            rows="3"
+            placeholder="পণ্যটির বিশেষত্ব, ফেব্রিক বা উপাদানের বিবরণ..."
+            class="w-full px-4 py-2.5 rounded-2xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b]"
+          ></textarea>
+        </div>
+
+        <!-- চেকবক্স অপশন -->
+        <div class="flex items-center gap-6 pt-2">
+          <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-700">
+            <input type="checkbox" id="product-active" checked class="w-4 h-4 rounded text-[#143d2b] focus:ring-[#143d2b]" />
+            <span>ওয়েবসাইটে প্রদর্শন করুন (Active)</span>
+          </label>
+
+          <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-700">
+            <input type="checkbox" id="product-featured" class="w-4 h-4 rounded text-[#143d2b] focus:ring-[#143d2b]" />
+            <span>ফিচারড পণ্য হিসেবে দেখান</span>
+          </label>
+        </div>
+
+        <!-- ফুটার বাটন -->
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-stone-200 mt-4">
+          <button 
+            type="button" 
+            id="cancel-modal-btn"
+            class="px-5 py-2.5 rounded-2xl border border-stone-300 text-stone-700 hover:bg-stone-100 text-sm font-semibold transition"
+          >
+            বাতিল করুন
+          </button>
+          <button 
+            type="submit" 
+            id="save-product-btn"
+            class="px-6 py-2.5 rounded-2xl bg-[#143d2b] hover:bg-[#1b4332] text-white text-sm font-bold shadow-md transition"
+          >
+            সংরক্ষণ করুন
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ডিলিট কনফার্মেশন মোডাল (Delete Confirmation Modal) -->
+  <div id="delete-modal" class="hidden fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center border border-[#e5e1d4] shadow-2xl">
+      <div class="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl mx-auto mb-3">
+        🗑️
+      </div>
+      <h3 class="text-lg font-bold text-stone-900">প্রোডাক্টটি মুছে ফেলতে চান?</h3>
+      <p class="text-xs text-stone-500 mt-1">এটি মুছে ফেললে Firestore ডাটাবেস থেকে পণ্যটি স্থায়ীভাবে মুছে যাবে।</p>
+
+      <div class="flex items-center justify-center gap-3 mt-6">
+        <button 
+          type="button" 
+          id="cancel-delete-btn"
+          class="px-4 py-2 rounded-2xl border border-stone-300 text-stone-700 hover:bg-stone-50 text-xs font-bold"
+        >
+          বাতিল
+        </button>
+        <button 
+          type="button" 
+          id="confirm-delete-btn"
+          class="px-4 py-2 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow"
+        >
+          হ্যাঁ, ডিলিট করুন
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- টোস্ট নোটিফিকেশন -->
+  <div id="toast-message" class="hidden"></div>
+
+  <!-- ফুটার -->
+  <footer class="bg-white border-t border-[#e5e1d4] py-4 text-center text-xs text-stone-500 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>© ShopnoTory (স্বপ্নতরী) অ্যাডমিন হাব</p>
+      <p>সহায়তা ও হটলাইন: <a href="tel:01845805713" class="text-[#143d2b] font-bold hover:underline">01845805713</a></p>
+    </div>
+  </footer>
+
+  <!-- স্ক্রিপ্ট লোড (ES Module) -->
+  <script type="module" src="./admin-dashboard.js"></script>
+</body>
+</html>

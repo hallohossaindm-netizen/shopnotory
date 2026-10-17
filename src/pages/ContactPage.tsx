@@ -87,7 +87,7 @@ export const ContactPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Phone */}
+              {/* Phone & WhatsApp */}
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-2xl bg-[#eef4ea] text-[#1b4332] flex items-center justify-center shrink-0 mt-0.5">
                   <Phone className="w-5 h-5" />
@@ -95,14 +95,34 @@ export const ContactPage: React.FC = () => {
                 <div>
                   <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wide">হটলাইন ও ফোন</h3>
                   <a
-                    href={`tel:${settings.supportPhone}`}
-                    className="text-xs sm:text-sm font-semibold text-[#143d2b] hover:text-[#387c53] mt-0.5 block"
+                    href={`tel:${settings.supportPhone || '01845805713'}`}
+                    className="text-xs sm:text-sm font-bold text-[#143d2b] hover:text-[#387c53] mt-0.5 block"
                   >
-                    {settings.supportPhone}
+                    {settings.supportPhone || '01845805713'}
                   </a>
                   <p className="text-[10px] text-stone-400 mt-0.5 flex items-center gap-1">
                     <Clock className="w-3 h-3" /> {settings.supportHours}
                   </p>
+                </div>
+              </div>
+
+              {/* Direct WhatsApp Contact */}
+              <div className="flex items-start gap-3.5 pt-2 border-t border-stone-100">
+                <div className="w-10 h-10 rounded-2xl bg-[#25D366]/15 text-[#128C7E] flex items-center justify-center shrink-0 mt-0.5 font-bold">
+                  <MessageCircle className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wide">হোয়াটসঅ্যাপ চ্যাট (WhatsApp)</h3>
+                  <a
+                    href={`https://wa.me/8801845805713?text=${encodeURIComponent('আসসালামু আলাইকুম, ShopnoTory থেকে সাহায্য চাই।')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs sm:text-sm font-bold text-[#128C7E] hover:underline mt-0.5 flex items-center gap-1.5"
+                  >
+                    <span>01845805713</span>
+                    <span className="text-[10px] bg-[#25D366] text-white px-2 py-0.5 rounded-full font-bold">সরাসরি মেসেজ করুন</span>
+                  </a>
+                  <p className="text-[10px] text-stone-400 mt-0.5">২৪/৭ দ্রুত রেসপন্স ও অর্ডার সহায়তা</p>
                 </div>
               </div>
             </div>

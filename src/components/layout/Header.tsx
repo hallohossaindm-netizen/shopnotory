@@ -70,10 +70,19 @@ export const Header: React.FC = () => {
             </span>
             <span className="text-[#325844]">|</span>
             <a
-              href={`tel:${settings.supportPhone}`}
-              className="flex items-center gap-1 hover:text-white transition"
+              href={`tel:${settings.supportPhone || '01845805713'}`}
+              className="flex items-center gap-1 hover:text-white transition font-medium"
             >
-              <Phone className="w-3.5 h-3.5 text-[#b8d56d]" /> {settings.supportPhone}
+              <Phone className="w-3.5 h-3.5 text-[#b8d56d]" /> {settings.supportPhone || '01845805713'}
+            </a>
+            <span className="text-[#325844]">|</span>
+            <a
+              href={`https://wa.me/8801845805713?text=${encodeURIComponent('আসসালামু আলাইকুম, ShopnoTory থেকে তথ্য জানতে চাই।')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[#b8d56d] hover:text-white transition font-bold"
+            >
+              <span>WhatsApp</span>
             </a>
           </div>
         </div>
@@ -321,12 +330,22 @@ export const Header: React.FC = () => {
 
             <div className="pt-4 border-t border-[#e5e1d4] text-xs text-stone-600 space-y-2">
               <p className="font-bold text-[#143d2b]">সহায়তা ও অর্ডার হটলাইন</p>
-              <a
-                href={`tel:${settings.supportPhone}`}
-                className="flex items-center gap-2 py-2 px-3 rounded-xl bg-white border border-[#d8d3c5] text-[#1b4332] font-semibold"
-              >
-                <Phone className="w-3.5 h-3.5 text-[#387c53]" /> {settings.supportPhone}
-              </a>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={`tel:${settings.supportPhone || '01845805713'}`}
+                  className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-white border border-[#d8d3c5] text-[#1b4332] font-bold text-xs"
+                >
+                  <Phone className="w-3.5 h-3.5 text-[#387c53]" /> {settings.supportPhone || '01845805713'}
+                </a>
+                <a
+                  href={`https://wa.me/8801845805713?text=${encodeURIComponent('আসসালামু আলাইকুম, ShopnoTory থেকে সাহায্য চাই।')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-[#25D366] text-white font-bold text-xs"
+                >
+                  <span>হোয়াটসঅ্যাপ</span>
+                </a>
+              </div>
               <p className="text-[10px] text-stone-400 text-center">
                 Dreams in Every Purchase · ShopnoTory
               </p>
