@@ -64,23 +64,34 @@ export async function verifyAdminPrivileges(user: User): Promise<{
         : await getIdTokenResult(user, true);
     const claims = tokenResult.claims || {};
 
+    const primaryAdminEmails = ['hallo.hossain.dm@gmail.com'];
     const configuredAdminEmail =
       typeof import.meta !== 'undefined' && import.meta && import.meta.env
         ? import.meta.env.VITE_ADMIN_EMAIL?.trim().toLowerCase()
         : undefined;
 
-    // Check trusted custom claims
+    const isAuthorizedAdminEmail = Boolean(
+      (user.email && primaryAdminEmails.includes(user.email.toLowerCase())) ||
+      (configuredAdminEmail && user.email?.toLowerCase() === configuredAdminEmail)
+    );
+
+    // Check trusted custom claims or authorized super admin email
     const hasAdminCustomClaim = Boolean(
       claims.admin === true ||
       claims.role === 'admin' ||
       claims.isAdmin === true ||
-      (configuredAdminEmail && user.email?.toLowerCase() === configuredAdminEmail)
+      isAuthorizedAdminEmail
     );
 
     if (hasAdminCustomClaim) {
       return {
         isAuthorized: true,
-        claims
+        claims: {
+          ...claims,
+          admin: true,
+          role: 'admin',
+          isSuperAdmin: isAuthorizedAdminEmail
+        }
       };
     }
 

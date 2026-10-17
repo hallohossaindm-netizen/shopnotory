@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { changeAdminPassword, sendAdminPasswordReset } from '../../services/adminAuth';
-import type { Product, ShopSettings, Order } from '../../types';
+import type { Product, ShopSettings, Order, Coupon } from '../../types';
 
 export const AdminDashboardPage: React.FC = () => {
   const {
@@ -47,6 +47,10 @@ export const AdminDashboardPage: React.FC = () => {
     updateProduct,
     deleteProduct,
     updateSettings,
+    addCoupon,
+    updateCoupon,
+    deleteCoupon,
+    toggleCouponStatus,
     updateOrderStatus,
     showToast
   } = useShop();
@@ -91,6 +95,90 @@ export const AdminDashboardPage: React.FC = () => {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState('');
   const [resetError, setResetError] = useState('');
+
+  // Coupon management states
+  const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscountType, setCouponDiscountType] = useState<'percent' | 'flat'>('percent');
+  const [couponDiscountValue, setCouponDiscountValue] = useState<number | ''>(10);
+  const [couponMinOrder, setCouponMinOrder] = useState<number | ''>(500);
+  const [couponActive, setCouponActive] = useState(true);
+  const [couponExpiresAt, setCouponExpiresAt] = useState('');
+  const [couponSaving, setCouponSaving] = useState(false);
+  const [couponDeleteId, setCouponDeleteId] = useState<string | null>(null);
+
+  const openAddCouponModal = () => {
+    setEditingCoupon(null);
+    setCouponCode('');
+    setCouponDiscountType('percent');
+    setCouponDiscountValue(10);
+    setCouponMinOrder(500);
+    setCouponActive(true);
+    setCouponExpiresAt('');
+    setIsCouponModalOpen(true);
+  };
+
+  const openEditCouponModal = (c: Coupon) => {
+    setEditingCoupon(c);
+    setCouponCode(c.code);
+    if (c.discountPercent) {
+      setCouponDiscountType('percent');
+      setCouponDiscountValue(c.discountPercent);
+    } else {
+      setCouponDiscountType('flat');
+      setCouponDiscountValue(c.discountAmount || 50);
+    }
+    setCouponMinOrder(c.minOrderAmount || 0);
+    setCouponActive(c.active);
+    setCouponExpiresAt(c.expiresAt || '');
+    setIsCouponModalOpen(true);
+  };
+
+  const handleSaveCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedCode = couponCode.trim().toUpperCase();
+    if (!trimmedCode) {
+      showToast('অনুগ্রহ করে কুপন কোড লিখুন');
+      return;
+    }
+    if (!couponDiscountValue || Number(couponDiscountValue) <= 0) {
+      showToast('সঠিক ছাড়ের পরিমাণ উল্লেখ করুন');
+      return;
+    }
+
+    setCouponSaving(true);
+    try {
+      const payload: Omit<Coupon, 'id'> = {
+        code: trimmedCode,
+        active: couponActive,
+        minOrderAmount: Number(couponMinOrder) || 0,
+        expiresAt: couponExpiresAt.trim() || undefined,
+        ...(couponDiscountType === 'percent'
+          ? { discountPercent: Number(couponDiscountValue), discountAmount: undefined }
+          : { discountAmount: Number(couponDiscountValue), discountPercent: undefined })
+      };
+
+      if (editingCoupon) {
+        await updateCoupon({ ...payload, id: editingCoupon.id });
+      } else {
+        await addCoupon(payload);
+      }
+      setIsCouponModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      showToast('কুপন সংরক্ষণ করতে সমস্যা হয়েছে');
+    } finally {
+      setCouponSaving(false);
+    }
+  };
+
+  const handleDeleteCouponConfirm = async () => {
+    if (couponDeleteId) {
+      await deleteCoupon(couponDeleteId);
+      setCouponDeleteId(null);
+    }
+  };
 
   useEffect(() => {
     if (location.pathname === '/admin/account') {
@@ -767,28 +855,321 @@ export const AdminDashboardPage: React.FC = () => {
 
         {/* TAB 4: COUPONS */}
         {activeTab === 'coupons' && (
-          <div className="bg-white rounded-3xl border border-[#ded9ce] p-6 space-y-4 shadow-xs">
-            <h3 className="text-base font-bold text-[#143d2b]">কুপন ও ছাড় কোড</h3>
-            <p className="text-xs text-stone-500">সক্রিয় কুপন কোডসমূহ যা চেকআউটে গ্রাহক ব্যবহার করতে পারেন</p>
-
-            <div className="grid sm:grid-cols-3 gap-4 pt-2">
-              {coupons.map(c => (
-                <div key={c.id} className="p-4 rounded-2xl bg-[#fbfaf7] border border-[#ede9de] space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-sm text-[#143d2b] tracking-wider">{c.code}</span>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                      {c.active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                    </span>
+          <div className="bg-white rounded-3xl border border-[#ded9ce] p-6 space-y-6 shadow-xs">
+            {/* Header with Title and Add Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#ede9de]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#eef4ea] text-[#143d2b] flex items-center justify-center font-bold">
+                    <Tag className="w-4 h-4" />
                   </div>
-                  <p className="text-xs text-stone-600">
-                    {c.discountPercent ? `${c.discountPercent}% ছাড়` : `৳${c.discountAmount} ফ্ল্যাট ছাড়`}
-                  </p>
-                  <p className="text-[10px] text-stone-400">
-                    সর্বনিম্ন অর্ডার: ৳{c.minOrderAmount || 0}
-                  </p>
+                  <h3 className="text-lg font-bold text-[#143d2b]">কুপন ও ছাড় কোড পরিচালনা</h3>
                 </div>
-              ))}
+                <p className="text-xs text-stone-500 mt-1">
+                  চেকআউটে গ্রাহক যেসকল কুপন ব্যবহার করে ছাড় পাবেন তা তৈরি, এডিট বা নিষ্ক্রিয় করুন
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={openAddCouponModal}
+                  className="px-4 py-2.5 rounded-2xl bg-[#143d2b] hover:bg-[#1b4332] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-[#143d2b]/15 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> নতুন কুপন যোগ করুন
+                </button>
+              </div>
             </div>
+
+            {/* Stats Summary Bar */}
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className="px-3 py-1.5 rounded-xl bg-[#f4efe6] text-stone-700 font-bold border border-[#e5e1d4]">
+                মোট কুপন: {coupons.length} টি
+              </span>
+              <span className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                সক্রিয়: {coupons.filter(c => c.active).length} টি
+              </span>
+              <span className="px-3 py-1.5 rounded-xl bg-stone-100 text-stone-600 font-bold border border-stone-200">
+                নিষ্ক্রিয়: {coupons.filter(c => !c.active).length} টি
+              </span>
+            </div>
+
+            {/* Coupon Cards Grid */}
+            {coupons.length === 0 ? (
+              <div className="text-center py-12 bg-[#fbfaf7] rounded-3xl border border-dashed border-stone-300 p-6 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto text-xl">
+                  🏷️
+                </div>
+                <h4 className="text-sm font-bold text-stone-700">কোনো কুপন তৈরি করা হয়নি</h4>
+                <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                  গ্রাহকদের বিশেষ ছাড় দিতে নতুন প্রমো বা কুপন কোড তৈরি করুন।
+                </p>
+                <button
+                  type="button"
+                  onClick={openAddCouponModal}
+                  className="inline-flex items-center gap-1 px-4 py-2 bg-[#143d2b] text-white text-xs font-bold rounded-xl shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" /> প্রথম কুপনটি তৈরি করুন
+                </button>
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {coupons.map(c => (
+                  <div
+                    key={c.id}
+                    className="p-5 rounded-3xl bg-[#fbfaf7] border border-[#ede9de] hover:border-[#143d2b]/30 hover:shadow-md transition duration-200 flex flex-col justify-between space-y-4"
+                  >
+                    {/* Top Row: Code & Active Toggle Button */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 bg-[#eef4ea] border border-[#b8d56d]/30 text-[#143d2b] px-3 py-1 rounded-xl">
+                        <Tag className="w-3.5 h-3.5 text-[#143d2b]" />
+                        <span className="font-mono font-black text-sm tracking-wider">{c.code}</span>
+                      </div>
+
+                      {/* Clickable Status Switch */}
+                      <button
+                        type="button"
+                        onClick={() => toggleCouponStatus(c.id)}
+                        title="স্ট্যাটাস পরিবর্তন করতে ক্লিক করুন"
+                        className={`text-[11px] px-2.5 py-1 rounded-full font-bold transition flex items-center gap-1 cursor-pointer ${
+                          c.active
+                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                            : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${c.active ? 'bg-emerald-600' : 'bg-stone-400'}`}></span>
+                        {c.active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                      </button>
+                    </div>
+
+                    {/* Middle: Discount Details */}
+                    <div className="space-y-1">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-2xl font-black text-[#143d2b]">
+                          {c.discountPercent ? `${c.discountPercent}%` : `৳${c.discountAmount}`}
+                        </span>
+                        <span className="text-xs text-stone-600 font-semibold">
+                          {c.discountPercent ? 'শতকরা ছাড়' : 'ফ্ল্যাট ছাড়'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-500 font-medium">
+                        সর্বনিম্ন অর্ডার: <strong className="text-stone-700">৳{c.minOrderAmount || 0}</strong>
+                      </p>
+                      {c.expiresAt && (
+                        <p className="text-[11px] text-stone-400">
+                          মেয়াদ: {c.expiresAt}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Bottom: Action Buttons (Edit & Delete) */}
+                    <div className="pt-3 border-t border-[#ede9de] flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditCouponModal(c)}
+                        className="flex-1 py-1.5 px-3 rounded-xl bg-white border border-stone-200 text-xs font-bold text-stone-700 hover:text-[#143d2b] hover:border-[#143d2b] transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-stone-500" />
+                        <span>এডিট</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCouponDeleteId(c.id)}
+                        className="py-1.5 px-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold hover:bg-rose-600 hover:text-white transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                        title="কুপন মুছুন"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>মুছুন</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ADD / EDIT COUPON MODAL */}
+            {isCouponModalOpen && (
+              <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+                <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 border border-[#ede9de] shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-[#eef4ea] text-[#143d2b] flex items-center justify-center font-bold">
+                        <Tag className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-base font-bold text-[#143d2b]">
+                        {editingCoupon ? 'কুপন কোড এডিট করুন' : 'নতুন কুপন কোড তৈরি করুন'}
+                      </h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsCouponModalOpen(false)}
+                      className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center font-bold text-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveCoupon} className="space-y-4 text-xs font-sans">
+                    {/* Coupon Code Input */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                        কুপন কোড <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                        required
+                        placeholder="যেমন: EID20, DISCOUNT50"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2b] uppercase bg-stone-50"
+                      />
+                      <p className="text-[10px] text-stone-400 mt-1">চেকআউটে গ্রাহক হুবহু এই কোডটি লিখে অ্যাপ্লাই করবেন।</p>
+                    </div>
+
+                    {/* Discount Type Selector */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
+                        ছাড়ের ধরন <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCouponDiscountType('percent')}
+                          className={`py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+                            couponDiscountType === 'percent'
+                              ? 'bg-[#143d2b] text-white border-[#143d2b] shadow-xs'
+                              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                          }`}
+                        >
+                          <span>শতকরা ছাড় (%)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCouponDiscountType('flat')}
+                          className={`py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+                            couponDiscountType === 'flat'
+                              ? 'bg-[#143d2b] text-white border-[#143d2b] shadow-xs'
+                              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                          }`}
+                        >
+                          <span>নির্দিষ্ট টাকা (৳)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Discount Value & Min Order */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                          {couponDiscountType === 'percent' ? 'ছাড়ের হার (%)' : 'ছাড়ের পরিমাণ (৳)'} <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={couponDiscountValue}
+                          onChange={e => setCouponDiscountValue(e.target.value === '' ? '' : Number(e.target.value))}
+                          required
+                          min={1}
+                          max={couponDiscountType === 'percent' ? 100 : 10000}
+                          placeholder={couponDiscountType === 'percent' ? '15' : '100'}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-[#143d2b] bg-stone-50"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                          সর্বনিম্ন অর্ডার (৳)
+                        </label>
+                        <input
+                          type="number"
+                          value={couponMinOrder}
+                          onChange={e => setCouponMinOrder(e.target.value === '' ? '' : Number(e.target.value))}
+                          min={0}
+                          placeholder="500"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-[#143d2b] bg-stone-50"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Expiry Date (Optional) */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                        মেয়াদ শেষ হওয়ার তারিখ (ঐচ্ছিক)
+                      </label>
+                      <input
+                        type="date"
+                        value={couponExpiresAt}
+                        onChange={e => setCouponExpiresAt(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#143d2b] bg-stone-50"
+                      />
+                    </div>
+
+                    {/* Active Checkbox */}
+                    <label className="flex items-center gap-2.5 pt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={couponActive}
+                        onChange={e => setCouponActive(e.target.checked)}
+                        className="w-4 h-4 rounded accent-[#143d2b]"
+                      />
+                      <span className="text-xs font-bold text-stone-700">কুপনটি এখনই সক্রিয় (Active) রাখুন</span>
+                    </label>
+
+                    {/* Footer Buttons */}
+                    <div className="flex items-center justify-end gap-2 pt-4 border-t border-stone-100">
+                      <button
+                        type="button"
+                        onClick={() => setIsCouponModalOpen(false)}
+                        className="px-4 py-2.5 rounded-xl border border-stone-300 text-stone-700 font-bold text-xs hover:bg-stone-50 transition"
+                      >
+                        বাতিল
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={couponSaving}
+                        className="px-5 py-2.5 rounded-xl bg-[#143d2b] hover:bg-[#1b4332] text-white font-bold text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{couponSaving ? 'সংরক্ষণ হচ্ছে...' : 'কুপন সংরক্ষণ করুন'}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* DELETE CONFIRMATION MODAL */}
+            {couponDeleteId && (
+              <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center border border-stone-200 shadow-2xl space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-xl">
+                    <Trash2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-stone-900">কুপনটি মুছে ফেলতে চান?</h4>
+                    <p className="text-xs text-stone-500 mt-1">
+                      মুছে ফেললে গ্রাহকরা আর এই কুপন কোড ব্যবহার করে চেকআউটে ছাড় পাবেন না।
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setCouponDeleteId(null)}
+                      className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50"
+                    >
+                      বাতিল
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteCouponConfirm}
+                      className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs"
+                    >
+                      হ্যাঁ, মুছে ফেলুন
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

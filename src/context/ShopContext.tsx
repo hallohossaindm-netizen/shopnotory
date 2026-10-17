@@ -46,6 +46,11 @@ interface ShopContextType {
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   updateSettings: (newSettings: ShopSettings) => Promise<void>;
+  // Coupon Management
+  addCoupon: (coupon: Omit<Coupon, 'id'>) => Promise<void>;
+  updateCoupon: (coupon: Coupon) => Promise<void>;
+  deleteCoupon: (couponId: string) => Promise<void>;
+  toggleCouponStatus: (couponId: string) => Promise<void>;
   adminLogin: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
   adminLogout: () => void;
   customerLogin: (email: string, name: string) => void;
@@ -60,6 +65,7 @@ const STORAGE_CART = 'shopnotory_cart_v2';
 const STORAGE_WISHLIST = 'shopnotory_wishlist_v2';
 const STORAGE_ORDERS = 'shopnotory_orders_v2';
 const STORAGE_SETTINGS = 'shopnotory_settings_v2';
+const STORAGE_COUPONS = 'shopnotory_coupons_v2';
 const STORAGE_ADMIN = 'shopnotory_admin_session';
 
 const ShopContext = createContext<ShopContextType | null>(null);
@@ -194,7 +200,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  const [coupons, setCoupons] = useState<Coupon[]>(initialCoupons);
+  const [coupons, setCoupons] = useState<Coupon[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_COUPONS);
+      return saved ? JSON.parse(saved) : initialCoupons;
+    } catch {
+      return initialCoupons;
+    }
+  });
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 
   // Active customer & admin
@@ -258,6 +271,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(settings));
     } catch {}
   }, [settings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_COUPONS, JSON.stringify(coupons));
+    } catch {}
+  }, [coupons]);
 
   // Firebase Auth admin verification listener
   useEffect(() => {
@@ -570,6 +589,76 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('স্টোর সেটিংস সফলভাবে সংরক্ষিত হয়েছে');
   };
 
+  const addCoupon = async (newC: Omit<Coupon, 'id'>) => {
+    const couponId = 'cpn-' + Date.now();
+    const created: Coupon = {
+      id: couponId,
+      ...newC,
+      code: newC.code.trim().toUpperCase()
+    };
+
+    if (db && auth?.currentUser) {
+      try {
+        await setDoc(doc(db, 'coupons', couponId), created);
+      } catch (err) {
+        console.warn('Firestore coupon add notice:', err);
+      }
+    }
+
+    setCoupons(prev => [created, ...prev]);
+    showToast(`নতুন কুপন "${created.code}" সফলভাবে যোগ করা হয়েছে! 🏷️`);
+  };
+
+  const updateCoupon = async (updated: Coupon) => {
+    const formatted: Coupon = {
+      ...updated,
+      code: updated.code.trim().toUpperCase()
+    };
+
+    if (db && auth?.currentUser) {
+      try {
+        await setDoc(doc(db, 'coupons', formatted.id), formatted, { merge: true });
+      } catch (err) {
+        console.warn('Firestore coupon update notice:', err);
+      }
+    }
+
+    setCoupons(prev => prev.map(c => (c.id === formatted.id ? formatted : c)));
+    showToast(`কুপন "${formatted.code}" তথ্য আপডেট করা হয়েছে ✨`);
+  };
+
+  const deleteCoupon = async (couponId: string) => {
+    const target = coupons.find(c => c.id === couponId);
+    if (db && auth?.currentUser) {
+      try {
+        await deleteDoc(doc(db, 'coupons', couponId));
+      } catch (err) {
+        console.warn('Firestore coupon delete notice:', err);
+      }
+    }
+
+    setCoupons(prev => prev.filter(c => c.id !== couponId));
+    showToast(`কুপন "${target?.code || ''}" মুছে ফেলা হয়েছে`);
+  };
+
+  const toggleCouponStatus = async (couponId: string) => {
+    const target = coupons.find(c => c.id === couponId);
+    if (!target) return;
+    const newStatus = !target.active;
+    const updated = { ...target, active: newStatus };
+
+    if (db && auth?.currentUser) {
+      try {
+        await updateDoc(doc(db, 'coupons', couponId), { active: newStatus });
+      } catch (err) {
+        console.warn('Firestore coupon toggle notice:', err);
+      }
+    }
+
+    setCoupons(prev => prev.map(c => (c.id === couponId ? updated : c)));
+    showToast(`কুপন "${target.code}" ${newStatus ? 'সক্রিয়' : 'নিষ্ক্রিয়'} করা হয়েছে`);
+  };
+
   const adminLogin = async (email: string, pass: string) => {
     if (!firebaseReady || !auth) {
       return {
@@ -667,6 +756,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateProduct,
         deleteProduct,
         updateSettings,
+        addCoupon,
+        updateCoupon,
+        deleteCoupon,
+        toggleCouponStatus,
         adminLogin,
         adminLogout,
         customerLogin,
