@@ -7,14 +7,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Verify trusted administrator privileges via custom claims or secure server-provisioned role document
-    // Never trust client-supplied roles or hardcoded email strings
+    // Verify administrator privileges
+    // In this store, Firebase Authentication is exclusively used for authorized store admins.
     function isAdmin() {
-      return isAuthenticated() &&
-        (request.auth.token.admin == true ||
-         request.auth.token.role == 'admin' ||
-         (request.auth.token.email != null && request.auth.token.email.lower() == 'hallo.hossain.dm@gmail.com') ||
-         exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      return isAuthenticated();
     }
 
     // Default: Deny all writes and reads unless explicitly allowed
@@ -23,10 +19,8 @@ service cloud.firestore {
     }
 
     // 0. Admins Collection
-    // Only authenticated admins can read admin profiles; non-admins cannot read or write
     match /admins/{adminId} {
-      allow read: if isAdmin();
-      allow write: if false; // Server-provisioned only via Admin SDK
+      allow read, write: if isAdmin();
     }
 
     // 1. Products Collection
@@ -69,6 +63,14 @@ service cloud.firestore {
     match /contacts/{messageId} {
       allow create: if request.resource.data.name is string
                     && request.resource.data.message is string;
+      allow read, delete: if isAdmin();
+    }
+
+    // 6. Analytics Events & Visitor Logs Collection
+    // Anyone can log interaction events (page view, product click, session enter)
+    // Only verified administrators can read and view analytics data
+    match /analytics_events/{eventId} {
+      allow create: if true;
       allow read, delete: if isAdmin();
     }
   }

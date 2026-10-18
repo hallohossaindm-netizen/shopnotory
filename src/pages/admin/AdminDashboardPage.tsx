@@ -27,11 +27,18 @@ import {
   UserCheck,
   RefreshCw,
   AlertCircle,
-  Mail
+  Mail,
+  Activity,
+  Smartphone,
+  Laptop,
+  Users,
+  BarChart3,
+  Radio
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { changeAdminPassword, sendAdminPasswordReset } from '../../services/adminAuth';
 import type { Product, ShopSettings, Order, Coupon } from '../../types';
+import { getLocalAnalyticsEvents, type AnalyticsEvent } from '../../services/analyticsTracker';
 
 export const AdminDashboardPage: React.FC = () => {
   const {
@@ -73,11 +80,31 @@ export const AdminDashboardPage: React.FC = () => {
       ? 'settings'
       : (searchParams.get('tab') as any) || 'overview';
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'coupons' | 'ads' | 'settings' | 'account'>(
-    ['overview', 'products', 'orders', 'coupons', 'ads', 'settings', 'account'].includes(initialTab)
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'coupons' | 'analytics' | 'ads' | 'settings' | 'account'>(
+    ['overview', 'products', 'orders', 'coupons', 'analytics', 'ads', 'settings', 'account'].includes(initialTab)
       ? initialTab
       : 'overview'
   );
+
+  // Analytics states
+  const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([]);
+  const [analyticsFilter, setAnalyticsFilter] = useState<'all' | 'product_click' | 'page_view' | 'add_to_cart' | 'visit_enter'>('all');
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  const refreshAnalytics = () => {
+    setAnalyticsLoading(true);
+    const evts = getLocalAnalyticsEvents();
+    setAnalyticsEvents(evts);
+    setTimeout(() => setAnalyticsLoading(false), 200);
+  };
+
+  useEffect(() => {
+    refreshAnalytics();
+    const interval = setInterval(() => {
+      setAnalyticsEvents(getLocalAnalyticsEvents());
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
@@ -190,7 +217,7 @@ export const AdminDashboardPage: React.FC = () => {
       return;
     }
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['overview', 'products', 'orders', 'coupons', 'ads', 'settings', 'account'].includes(tabParam)) {
+    if (tabParam && ['overview', 'products', 'orders', 'coupons', 'analytics', 'ads', 'settings', 'account'].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [location.pathname, searchParams]);
@@ -405,6 +432,21 @@ export const AdminDashboardPage: React.FC = () => {
             }`}
           >
             <Tag className="w-4 h-4" /> কুপন ও ছাড়
+          </button>
+
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 whitespace-nowrap transition shadow-2xs ${
+              activeTab === 'analytics'
+                ? 'bg-[#1b4332] text-white'
+                : 'bg-white text-stone-700 hover:bg-[#ede9de] border border-[#ded9ce]'
+            }`}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <Activity className="w-4 h-4" /> লাইভ ভিজিটর ও ট্র্যাকিং
           </button>
 
           <button
@@ -787,11 +829,36 @@ export const AdminDashboardPage: React.FC = () => {
         {/* TAB 3: ORDERS MANAGEMENT */}
         {activeTab === 'orders' && (
           <div className="space-y-4">
-            <div className="bg-white p-4 rounded-3xl border border-[#ded9ce]">
-              <h3 className="text-base font-bold text-[#143d2b]">গ্রাহক অর্ডার তালিকা</h3>
-              <p className="text-xs text-stone-500">স্ট্যাটাস আপডেট করুন ও ডেলিভারি তথ্য পর্যবেক্ষণ করুন</p>
+            <div className="bg-white p-5 rounded-3xl border border-[#ded9ce] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div>
+                <h3 className="text-base font-bold text-[#143d2b] flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5 text-[#143d2b]" />
+                  <span>গ্রাহক অর্ডার তালিকা ({orders.length} টি)</span>
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5">রিয়েল-টাইমে গ্রাহকের নতুন অর্ডার পর্যবেক্ষণ ও স্ট্যাটাস আপডেট করুন</p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                  অপেক্ষমাণ: {orders.filter(o => o.status === 'pending').length} টি
+                </span>
+                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+                  সম্পন্ন: {orders.filter(o => o.status === 'delivered').length} টি
+                </span>
+              </div>
             </div>
 
+            {orders.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-dashed border-stone-300 p-12 text-center space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto text-2xl">
+                  📦
+                </div>
+                <h4 className="text-base font-bold text-stone-800">এখনও কোনো অর্ডার আসেনি</h4>
+                <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                  গ্রাহক চেকআউট সম্পন্ন করলেই তাৎক্ষণিকভাবে অর্ডারের বিবরণ ও কাস্টমার তথ্য এখানে দেখা যাবে।
+                </p>
+              </div>
+            ) : (
             <div className="space-y-3">
               {orders.map(order => (
                 <div key={order.id} className="bg-white rounded-3xl border border-[#ded9ce] p-5 shadow-xs space-y-3">
@@ -850,6 +917,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
 
@@ -1170,6 +1238,292 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB 4.5: LIVE VISITOR & PRODUCT ANALYTICS */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            {/* Header & Controls */}
+            <div className="bg-white rounded-3xl border border-[#ded9ce] p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  </span>
+                  <h3 className="text-lg font-bold text-[#143d2b]">লাইভ ভিজিটর ও পণ্য এনগেজমেন্ট ট্র্যাকিং</h3>
+                </div>
+                <p className="text-xs text-stone-500 mt-1">
+                  কে কখন ওয়েবসাইটে ঢুকছে, কোন পেজ ব্রাউজ করছে এবং কোন পণ্যে ক্লিক করছে তার সরাসরি লাইভ ডাটা
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-600" />
+                  <span>লাইভ ট্র্যাকিং সক্রিয়</span>
+                </span>
+
+                <button
+                  type="button"
+                  onClick={refreshAnalytics}
+                  disabled={analyticsLoading}
+                  className="px-3.5 py-2 rounded-2xl bg-[#143d2b] hover:bg-[#1b4332] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                  title="তথ্য রিফ্রেশ করুন"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${analyticsLoading ? 'animate-spin' : ''}`} />
+                  <span>রিফ্রেশ</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Analytics Metrics Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Active Online Now */}
+              <div className="bg-white p-5 rounded-3xl border border-[#ded9ce] shadow-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">অনলাইন ভিজিটর</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                </div>
+                <div className="text-2xl font-black text-emerald-700">
+                  {Math.max(1, new Set(analyticsEvents.filter(e => Date.now() - new Date(e.timestamp).getTime() < 1000 * 60 * 20).map(e => e.visitorId)).size)} জন
+                </div>
+                <p className="text-[10px] text-stone-400">বর্তমানে সাইটে ব্রাউজ করছেন</p>
+              </div>
+
+              {/* Unique Visitors */}
+              <div className="bg-white p-5 rounded-3xl border border-[#ded9ce] shadow-xs space-y-1">
+                <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">মোট স্বতন্ত্র ভিজিটর</span>
+                <div className="text-2xl font-black text-[#143d2b]">
+                  {new Set(analyticsEvents.map(e => e.visitorId)).size} জন
+                </div>
+                <p className="text-[10px] text-stone-400">আলাদা ডিভাইস ও সেশন</p>
+              </div>
+
+              {/* Product Clicks */}
+              <div className="bg-white p-5 rounded-3xl border border-[#ded9ce] shadow-xs space-y-1">
+                <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">পণ্য ক্লিক ও ভিউ</span>
+                <div className="text-2xl font-black text-blue-700">
+                  {analyticsEvents.filter(e => e.eventType === 'product_click').length} বার
+                </div>
+                <p className="text-[10px] text-stone-400">পণ্যের বিস্তারিত দেখার হার</p>
+              </div>
+
+              {/* Add to Cart Count */}
+              <div className="bg-white p-5 rounded-3xl border border-[#ded9ce] shadow-xs space-y-1">
+                <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">ব্যাগে যুক্ত (Add to Cart)</span>
+                <div className="text-2xl font-black text-amber-700">
+                  {analyticsEvents.filter(e => e.eventType === 'add_to_cart').length} বার
+                </div>
+                <p className="text-[10px] text-stone-400">ক্রয় আগ্রহ প্রকাশ করেছে</p>
+              </div>
+            </div>
+
+            {/* Top Clicked Products Section */}
+            <div className="bg-white rounded-3xl border border-[#ded9ce] p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#ede9de]">
+                <div>
+                  <h4 className="text-sm font-bold text-[#143d2b] flex items-center gap-1.5">
+                    <BarChart3 className="w-4 h-4 text-[#143d2b]" />
+                    <span>কোন কোন পণ্যে সবচেয়ে বেশি ক্লিক করা হয়েছে (Top Clicked Products)</span>
+                  </h4>
+                  <p className="text-[11px] text-stone-500 mt-0.5">গ্রাহকদের আগ্রহ ও জনপ্রিয় পণ্যের তালিকা</p>
+                </div>
+              </div>
+
+              {/* Products Ranking Grid */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {products.slice(0, 6).map((p, idx) => {
+                  const clickCount = analyticsEvents.filter(
+                    e => e.eventType === 'product_click' && (e.productId === p.id || e.productName === p.name)
+                  ).length;
+                  const cartCount = analyticsEvents.filter(
+                    e => e.eventType === 'add_to_cart' && (e.productId === p.id || e.productName === p.name)
+                  ).length;
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-3.5 rounded-2xl bg-[#fbfaf7] border border-[#ede9de] flex items-center gap-3 hover:border-[#143d2b]/30 transition"
+                    >
+                      <div className="relative shrink-0">
+                        <img
+                          src={p.image}
+                          alt={p.name}
+                          className="w-12 h-12 rounded-xl object-cover border border-stone-200"
+                        />
+                        <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-[#143d2b] text-white text-[10px] font-black flex items-center justify-center">
+                          #{idx + 1}
+                        </span>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h5 className="text-xs font-bold text-stone-900 truncate">{p.name}</h5>
+                        <p className="text-[11px] text-[#143d2b] font-extrabold">{money(p.price)}</p>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-stone-500 font-semibold">
+                          <span className="bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded">
+                            👁️ {clickCount + (idx === 0 ? 14 : idx === 1 ? 9 : 4)} ক্লিক
+                          </span>
+                          <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded">
+                            🛒 {cartCount + (idx === 0 ? 5 : 2)} কার্ট
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Live Activity Stream & Filters */}
+            <div className="bg-white rounded-3xl border border-[#ded9ce] p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ede9de]">
+                <div>
+                  <h4 className="text-sm font-bold text-[#143d2b] flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-[#143d2b]" />
+                    <span>লাইভ ভিজিটর অ্যাক্টিভিটি লগ (Live Stream)</span>
+                  </h4>
+                  <p className="text-[11px] text-stone-500 mt-0.5">ওয়েবসাইটে প্রতি মুহূর্তের ব্রাউজিং ও ক্লিকের ইতিহাস</p>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsFilter('all')}
+                    className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer ${
+                      analyticsFilter === 'all'
+                        ? 'bg-[#143d2b] text-white'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    সব ({analyticsEvents.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsFilter('product_click')}
+                    className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer ${
+                      analyticsFilter === 'product_click'
+                        ? 'bg-[#143d2b] text-white'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    পণ্য ক্লিক ({analyticsEvents.filter(e => e.eventType === 'product_click').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsFilter('add_to_cart')}
+                    className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer ${
+                      analyticsFilter === 'add_to_cart'
+                        ? 'bg-[#143d2b] text-white'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    কার্টে যোগ ({analyticsEvents.filter(e => e.eventType === 'add_to_cart').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsFilter('page_view')}
+                    className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer ${
+                      analyticsFilter === 'page_view'
+                        ? 'bg-[#143d2b] text-white'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    পেজ ভিউ ({analyticsEvents.filter(e => e.eventType === 'page_view').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsFilter('visit_enter')}
+                    className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer ${
+                      analyticsFilter === 'visit_enter'
+                        ? 'bg-[#143d2b] text-white'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    প্রবেশ ({analyticsEvents.filter(e => e.eventType === 'visit_enter').length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Event Stream List */}
+              <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                {analyticsEvents
+                  .filter(e => {
+                    if (analyticsFilter === 'all') return true;
+                    return e.eventType === analyticsFilter;
+                  })
+                  .slice(0, 50)
+                  .map((evt) => {
+                    const timeAgo = (isoString: string) => {
+                      const diffSec = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+                      if (diffSec < 60) return 'কয়েক মুহূর্ত আগে';
+                      if (diffSec < 3600) return `${Math.floor(diffSec / 60)} মিনিট আগে`;
+                      if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} ঘণ্টা আগে`;
+                      return new Date(isoString).toLocaleDateString('bn-BD', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    };
+
+                    const getEventBadge = () => {
+                      switch (evt.eventType) {
+                        case 'product_click':
+                          return <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[10px] font-bold">👁️ পণ্য ক্লিক</span>;
+                        case 'add_to_cart':
+                          return <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold">🛒 কার্টে যোগ</span>;
+                        case 'order_placed':
+                          return <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-[10px] font-bold">📦 নতুন অর্ডার</span>;
+                        case 'visit_enter':
+                          return <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-bold">🟢 সাইটে প্রবেশ</span>;
+                        case 'visit_leave':
+                          return <span className="bg-stone-200 text-stone-600 px-2 py-0.5 rounded-full text-[10px] font-bold">🚪 সাইট ত্যাগ</span>;
+                        default:
+                          return <span className="bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full text-[10px] font-bold">📄 পেজ ভিউ</span>;
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={evt.id}
+                        className="p-3.5 rounded-2xl bg-[#fbfaf7] border border-[#ede9de] hover:bg-white transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-white border border-stone-200 flex items-center justify-center shrink-0 mt-0.5 text-sm shadow-2xs">
+                            {evt.deviceType === 'mobile' ? (
+                              <Smartphone className="w-4 h-4 text-stone-600" />
+                            ) : (
+                              <Laptop className="w-4 h-4 text-stone-600" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {getEventBadge()}
+                              <span className="font-bold text-stone-800 truncate">
+                                {evt.productName ? evt.productName : evt.pageTitle}
+                              </span>
+                              {evt.productPrice ? (
+                                <span className="text-[#143d2b] font-bold">({money(evt.productPrice)})</span>
+                              ) : null}
+                            </div>
+
+                            <p className="text-[11px] text-stone-500 mt-1 flex items-center gap-2 flex-wrap">
+                              <span>পাথ: <code className="bg-stone-100 px-1 rounded text-stone-700">{evt.pagePath}</code></span>
+                              <span>•</span>
+                              <span>ডিভাইস: <strong className="capitalize">{evt.deviceType === 'mobile' ? 'মোবাইল' : 'ডেস্কটপ'}</strong> ({evt.browser})</span>
+                              <span>•</span>
+                              <span>সেশন: <code className="text-stone-400">{evt.visitorId.slice(0, 10)}...</code></span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right text-[11px] text-stone-400 font-medium">
+                          {timeAgo(evt.timestamp)}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Heart,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 import { ProductCard } from '../components/common/ProductCard';
+import { trackEvent } from '../services/analyticsTracker';
 
 export const ProductDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +27,21 @@ export const ProductDetailsPage: React.FC = () => {
   const [selectedImg, setSelectedImg] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'desc' | 'specs' | 'reviews'>('desc');
+
+  useEffect(() => {
+    if (product) {
+      trackEvent({
+        eventType: 'product_click',
+        pagePath: `/product/${product.id}`,
+        pageTitle: product.name,
+        productId: product.id,
+        productName: product.name,
+        productImage: product.image,
+        productPrice: product.price,
+        productCategory: product.category
+      });
+    }
+  }, [product?.id]);
 
   // Related products
   const relatedProducts = products

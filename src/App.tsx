@@ -24,16 +24,65 @@ import { TermsPage } from './pages/TermsPage';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { FloatingWhatsApp } from './components/common/FloatingWhatsApp';
+import { trackEvent } from './services/analyticsTracker';
 
 // Lucide icons
 import { WifiOff, Smartphone, Download, Share2, X, Sparkles } from 'lucide-react';
 
-// Scroll to top on route change
-function ScrollToTop() {
+// Scroll to top on route change & track visitor analytics
+function ScrollAndAnalyticsTracker() {
   const { pathname } = useLocation();
+
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    // Track public page views (skip admin dashboard)
+    if (!pathname.startsWith('/admin')) {
+      const getPageTitle = (path: string) => {
+        if (path === '/') return 'হোমপেজ';
+        if (path === '/shop') return 'শপ কালেকশন';
+        if (path.startsWith('/product/')) return 'পণ্যের বিবরণী পেজ';
+        if (path === '/cart') return 'শপিং ব্যাগ (কার্ট)';
+        if (path === '/checkout') return 'চেকআউট পেজ';
+        if (path === '/orders') return 'অর্ডার ট্র্যাকিং পেজ';
+        if (path === '/contact') return 'যোগাযোগ ও সাপোর্ট';
+        if (path === '/story') return 'আমাদের গল্প';
+        if (path === '/why-shopnotory') return 'কেন স্বপ্নতরী';
+        return 'পেজ: ' + path;
+      };
+
+      trackEvent({
+        eventType: 'page_view',
+        pagePath: pathname,
+        pageTitle: getPageTitle(pathname)
+      });
+    }
   }, [pathname]);
+
+  // Track session enter and leave
+  useEffect(() => {
+    if (window.location.pathname.startsWith('/admin')) return;
+
+    trackEvent({
+      eventType: 'visit_enter',
+      pagePath: window.location.pathname,
+      pageTitle: document.title || 'ShopnoTory'
+    });
+
+    const handleBeforeUnload = () => {
+      trackEvent({
+        eventType: 'visit_leave',
+        pagePath: window.location.pathname,
+        pageTitle: document.title || 'ShopnoTory'
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   return null;
 }
 
@@ -169,7 +218,7 @@ export default function App() {
   return (
     <ShopProvider>
       <BrowserRouter>
-        <ScrollToTop />
+        <ScrollAndAnalyticsTracker />
         <Routes>
           {/* Public Storefront Routes with Common Header & Footer */}
           <Route element={<PublicLayout />}>

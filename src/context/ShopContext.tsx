@@ -5,6 +5,7 @@ import { db, auth, firebaseReady } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { loginAdminWithFirebase, verifyAdminPrivileges } from '../services/adminAuth';
+import { trackEvent } from '../services/analyticsTracker';
 
 interface ShopContextType {
   products: Product[];
@@ -322,6 +323,35 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsub;
   }, []);
 
+  // Real-time Firestore orders listener for Admin
+  useEffect(() => {
+    if (!db || !isAdmin) return;
+    try {
+      const unsub = onSnapshot(
+        collection(db, 'orders'),
+        snap => {
+          if (!snap.empty) {
+            const liveOrders = snap.docs.map(d => ({
+              ...d.data(),
+              id: d.data().id || d.id
+            } as Order));
+            liveOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setOrders(liveOrders);
+            try {
+              localStorage.setItem(STORAGE_ORDERS, JSON.stringify(liveOrders));
+            } catch {}
+          }
+        },
+        err => {
+          console.warn('Orders listener notice:', err);
+        }
+      );
+      return unsub;
+    } catch (err) {
+      console.warn('Orders listener error:', err);
+    }
+  }, [isAdmin]);
+
   // Cart calculations
   const cartSubtotal = useMemo(() => {
     return cart.reduce((acc, line) => acc + line.product.price * line.qty, 0);
@@ -379,6 +409,17 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showToast(`${product.name} কার্টে যোগ হয়েছে ✨`);
         return [...prev, { product, qty: Math.min(qty, product.stock) }];
       }
+    });
+
+    trackEvent({
+      eventType: 'add_to_cart',
+      pagePath: typeof window !== 'undefined' ? window.location.pathname : '/shop',
+      pageTitle: product.name,
+      productId: product.id,
+      productName: product.name,
+      productImage: product.image,
+      productPrice: product.price,
+      productCategory: product.category
     });
   };
 
@@ -487,17 +528,32 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createdAt: new Date().toISOString()
     };
 
-    // Save to Firestore if available
+    // Save to Firestore with explicit document ID if available
     if (db) {
       try {
-        await addDoc(collection(db, 'orders'), newOrder);
+        await setDoc(doc(db, 'orders', newOrder.id), newOrder);
       } catch (err) {
         console.warn('Firestore order save notice:', err);
       }
     }
 
-    // Update local orders
-    setOrders(prev => [newOrder, ...prev]);
+    // Always update local orders and save to localStorage
+    setOrders(prev => {
+      const updated = [newOrder, ...prev.filter(o => o.id !== newOrder.id)];
+      try {
+        localStorage.setItem(STORAGE_ORDERS, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // Track analytics event
+    trackEvent({
+      eventType: 'order_placed',
+      pagePath: '/checkout',
+      pageTitle: 'অর্ডার প্লেসমেন্ট',
+      productName: `অর্ডার #${newOrder.id} (${newOrder.customer.name})`,
+      productPrice: newOrder.grandTotal
+    });
 
     // Update product stock
     setProducts(prev =>

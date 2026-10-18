@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag, Star, Eye } from 'lucide-react';
 import type { Product } from '../../types';
 import { useShop } from '../../context/ShopContext';
+import { trackEvent } from '../../services/analyticsTracker';
 
 export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const { addToCart, toggleWishlist, isInWishlist } = useShop();
@@ -11,11 +12,28 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
   const money = (n: number) => '৳' + Math.round(n).toLocaleString('en-BD');
 
+  const handleProductClick = () => {
+    trackEvent({
+      eventType: 'product_click',
+      pagePath: `/product/${product.id}`,
+      pageTitle: product.name,
+      productId: product.id,
+      productName: product.name,
+      productImage: product.image,
+      productPrice: product.price,
+      productCategory: product.category
+    });
+  };
+
   return (
     <div className="group bg-white rounded-2xl border border-[#ede9de] overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between font-sans relative">
       {/* Product Image & Badges */}
       <div className="relative aspect-square overflow-hidden bg-[#f4f2ea]">
-        <Link to={`/product/${product.id}`} className="block w-full h-full">
+        <Link
+          to={`/product/${product.id}`}
+          onClick={handleProductClick}
+          className="block w-full h-full"
+        >
           <img
             src={product.image}
             alt={product.name}
@@ -64,6 +82,7 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
           <Link
             to={`/product/${product.id}`}
+            onClick={handleProductClick}
             className="font-bold text-xs sm:text-sm text-[#143d2b] line-clamp-1 hover:text-[#387c53] transition block"
           >
             {product.name}

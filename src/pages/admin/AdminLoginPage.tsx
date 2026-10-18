@@ -116,22 +116,21 @@ export const AdminLoginPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Firebase Not Configured Notice (Requirement 8) */}
+        {/* Firebase Not Configured Notice */}
         {!firebaseConfigured && (
           <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2.5">
             <div className="flex items-start gap-2.5 font-bold">
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-bold text-amber-900">Firebase Auth সক্রিয় করা হয়নি</p>
+                <p className="text-xs font-bold text-amber-900">Firebase সংযোগ সক্রিয় করা হয়নি</p>
                 <p className="text-[11px] font-normal text-amber-800 mt-0.5">
-                  নিরাপত্তা বিধিমালার স্বার্থে ডেমো ক্রেডেনশিয়াল নিষ্ক্রিয় করা হয়েছে। অ্যাডমিন লগইনের জন্য নিচের ধাপসমূহ সম্পন্ন করুন:
+                  অ্যাডমিন লগইনের জন্য নিচের ধাপসমূহ সম্পন্ন করুন:
                 </p>
               </div>
             </div>
             <ol className="list-decimal list-inside space-y-1 text-[11px] text-amber-800 pl-1 border-t border-amber-200/60 pt-2 font-mono text-left">
               <li>Firebase Console-এ Email/Password Provider সক্রিয় করুন</li>
-              <li><code>.env</code> ফাইলে Firebase Project Credentials যুক্ত করুন</li>
-              <li>Admin SDK দিয়ে অ্যাকাউন্টে <code>admin: true</code> কাস্টম ক্লেইম সেট করুন</li>
+              <li>Authentication &gt; Users ট্যাবে গিয়ে আপনার অ্যাডমিন ইমেইল ও পাসওয়ার্ড তৈরি করুন</li>
             </ol>
           </div>
         )}
@@ -220,7 +219,7 @@ export const AdminLoginPage: React.FC = () => {
 
         <div className="pt-3 border-t border-stone-100 text-center">
           <p className="text-[11px] text-stone-500">
-            নিরাপত্তা নির্দেশিকা: Firebase Custom Claims (admin: true) ব্যতীত কোনো ব্যবহারকারী কন্ট্রোল সেন্টারে প্রবেশাধিকার পাবে না।
+            নিরাপত্তা নির্দেশিকা: ShopnoTory-এর সুরক্ষিত Firebase Authentication দ্বারা নিয়ন্ত্রিত। আপনার ফায়ারবেস ইমেইল ও পাসওয়ার্ড দিয়ে সরাসরি লগইন করুন।
           </p>
         </div>
       </div>
